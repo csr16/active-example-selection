@@ -1,7 +1,7 @@
 import logging
 import sys
 from os.path import join
-
+import time
 from omegaconf import OmegaConf
 
 import wandb
@@ -51,7 +51,11 @@ def main():
     agent_type = AGENTS[conf.agent]
     agent = agent_type(env, conf.output_dir, **conf.agent_kwargs)
 
+    start = time.time()
     agent.train()
+    end = time.time()
+    elapsed_hours = (end - start) / 3600.0
+    logger.info(f"Elapsed time: {elapsed_hours:.6f} hours")
 
     for test_kwargs in conf.tests:
         agent.eval(eval_mode="test", **test_kwargs)

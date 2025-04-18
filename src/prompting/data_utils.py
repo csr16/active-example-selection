@@ -9,11 +9,93 @@ from prompting.models import GenerationOutput, Prompt
 
 logger = getLogger(__name__)
 
+import os
+import json
+
+import re
+BB_TASKS = ['implicatures', 'question_selection', 'logical_fallacy_detection', 'presuppositions_as_nli', 'sports_understanding', 
+            'navigate', 'epistemic_reasoning', 'dyck_languages', 'tense', 'gender_inclusive_sentences_german', 'operators', 'causal_judgment', 
+            'winowhy', 'linguistics_puzzles', 'ruin_names', 'snarks', 'disambiguation_qa', 'movie_recommendation', 'timedial', 'hyperbaton']
+
+MATH_TASKS = ["aqua"]
+
+def load_BB_data(type, task):
+    bb_induce_data_path = os.path.join(os.path.dirname(__file__), '../extra_data/bigbench-raw/induce/')
+    bb_eval_data_path = os.path.join(os.path.dirname(__file__), '../extra_data/bigbench-raw//execute/')
+    base_path = bb_induce_data_path if type == 'induce' else bb_eval_data_path
+    
+    path = base_path + task + '.json'
+    with open(path, 'r') as f:
+        data = json.load(f)
+
+    examples = data['examples']
+    num_examples = len(examples)
+
+    inputs, outputs = [], []
+    data_collection = []
+    for i in range(num_examples):
+        data = examples[str(i + 1)]
+        input_, output_ = data['input'], [data['output']]
+        inputs.append(input_)
+        outputs.append(output_)
+        data_collection.append({"text": input_, "label": output_[0]})
+    
+    return inputs, outputs, data_collection
+
+def load_math_data(type, task):
+    induce_data_path = {"gsm8k":"../extra_data/math/gsm8k/gsm8k_train.json",
+                        "aqua":"../extra_data/math/AQuA/aqua_train_processed.json",
+                        "svamp": "../extra_data/math/SVAMP/svamp_train.json",
+                        "multiarith": "../extra_data/math/MultiArith/multiarith_train.json"}
+    eval_data_path = {"gsm8k":"../extra_data/math/gsm8k/gsm8k_test.json",
+                    "aqua":"../extra_data/math/AQuA/aqua_test_processed.json",
+                    "svamp": "../extra_data/math/SVAMP/svamp_test.json",
+                    "multiarith": "../extra_data/math/MultiArith/multiarith_test.json"}
+    
+    path = induce_data_path[task] if type == 'induce' else eval_data_path[task]
+    path = os.path.join(os.path.dirname(__file__), path)
+    with open(path, 'r') as f:
+        data = json.load(f)
+
+    examples = data['examples']
+    num_examples = len(examples)
+
+    inputs, outputs = [], []
+    data_collection = []
+    for i in range(num_examples):
+        data = examples[str(i + 1)]
+        #
+        input_, output_ = data['input'], [data['output']]
+        inputs.append(input_)
+        outputs.append(output_)
+        data_collection.append({"text": input_, "label": output_[0]})
+
+    return inputs, outputs, data_collection
+
+
+############################################################################################################
+############################################################################################################
 
 class BaseProcessor:
     @cached_property
     def dataset(self):
-        return load_dataset(self.dataset_name)
+        if self.dataset_name in ["ag_news", "SetFit/sst2", "trec", "amazon_polarity"]:
+            if self.dataset_name == "trec":
+                return load_dataset(self.dataset_name, trust_remote_code=True)
+            else:
+                return load_dataset(self.dataset_name)
+        elif self.dataset_name in BB_TASKS:
+            _, __, train_val_data = load_BB_data(type='induce', task=self.dataset_name)
+            _, __, test_data = load_BB_data(type='execute', task=self.dataset_name)
+            dataset_collection = {"train": train_val_data, "validation": None, "test": test_data}
+            return dataset_collection
+        elif self.dataset_name in MATH_TASKS:
+            _, __, train_val_data = load_math_data(type='induce', task=self.dataset_name)
+            _, __, test_data = load_math_data(type='execute', task=self.dataset_name)
+            dataset_collection = {"train": train_val_data, "validation": None, "test": test_data}
+            return dataset_collection
+        else:
+            raise NotImplementedError
 
     @cached_property
     def train_split(self):
@@ -75,6 +157,7 @@ class BaseProcessor:
             range(len(self.test_split)), k=test_size
         )
         self.test_dataset = [self.test_split[i] for i in test_indices]
+        self.test_dataset = self.test_dataset[:400]
 
         dataset_hash = deterministic_hash(
             f"{labeled_train_indices}{labeled_val_indices}{unlabeled_train_indices}"
@@ -352,3 +435,101 @@ class AmazonProcessor(BaseProcessor):
         else:
             title, review = "", s
         return {"title": title, "content": review, "label": 0}
+
+class BB_Math_Processor(BaseProcessor):
+    def __init__(self, dataset_name, seed: int, mode: str):
+        self.dataset_name = dataset_name
+        assert dataset_name in BB_TASKS or dataset_name in MATH_TASKS
+        #
+        self.val_split = None
+        self.train_template = "Article: {text}\n" "Answer: {label_text}\n\n"
+        self.eval_template = "Article: {text}\n" "Answer:"
+        #
+        self.representation_template = "Article: {text}\n"
+
+        #
+        self.generate_datasets(seed, mode)
+        #
+        if dataset_name in ["winowhy", "epistemic_reasoning", "hyperbaton"]:
+            self.labels = self.update_label_orders_direct()
+        elif dataset_name in ["timedial", "aqua"]:
+            self.labels = self.update_label_orders_matching()
+        else:
+            raise NotImplementedError
+        self.model_kwargs = {"labels": self.labels}
+
+    def update_label_orders_direct(self):
+        # Step 1: Combine all datasets to extract unique labels (preserving order)
+        combined = self.train_dataset + self.val_dataset + self.test_dataset
+        unique_labels = list(dict.fromkeys(item['label'] for item in combined))
+        unique_labels = sorted(unique_labels)
+        print("Unique labels:", unique_labels)
+
+        # Step 2: Create a mapping from each label to its corresponding index
+        label_to_index = {label: index for index, label in enumerate(unique_labels)}
+
+        # Step 3: Replace the label in each dataset with the corresponding index
+        for dataset in [self.train_dataset, self.val_dataset, self.test_dataset]:
+            for item in dataset:
+                item['label'] = label_to_index[item['label']]
+
+        return unique_labels
+    
+    def update_label_orders_matching(self):
+        # Step 1: Define a function to reformat the output to just include the option letter in parentheses.
+        def normalize_label(label_str):
+            """
+            Normalize the answer label so that it is in the format '(X)' where X is a single letter.
+            If the label doesn't already start with '(', it will be wrapped.
+            """
+            label_str = label_str.strip()
+            
+            # If the label is exactly one alphabetic character (e.g., "E"), wrap it.
+            if len(label_str) == 1 and label_str.isalpha():
+                return f"({label_str.upper()})"
+            
+            # If the label doesn't start with '(', wrap it.
+            if not label_str.startswith("("):
+                label_str = f"({label_str}"
+            
+            # Use regex to extract the first alphabetic character inside the parentheses.
+            match = re.match(r"\(([A-Za-z])", label_str)
+            if match:
+                return f"({match.group(1).upper()})"
+            else:
+                # Fallback: return the label unchanged if it doesn't match the expected pattern.
+                print("- Return the same label.")
+                return label_str
+
+        # Apply the reformatting to all tasks in all splits.
+        for dataset in [self.train_dataset, self.val_dataset, self.test_dataset]:
+            for task in dataset:
+                task["label"] = normalize_label(task["label"])
+
+        # Step 2: Gather a list of unique labels across all datasets (preserving first appearance order).
+        unique_labels = []
+        for dataset in [self.train_dataset, self.val_dataset, self.test_dataset]:
+            for task in dataset:
+                label = task["label"]
+                if label not in unique_labels:
+                    unique_labels.append(label)
+        unique_labels = sorted(unique_labels)
+        print("Unique labels:", unique_labels)
+
+        # Step 3: Create a mapping from each label to a unique index.
+        label_to_index = {label: index for index, label in enumerate(unique_labels)}
+        print("Label to index mapping:", label_to_index)
+
+        # Step 4: Replace each task's output with its corresponding index.
+        for dataset in [self.train_dataset, self.val_dataset, self.test_dataset]:
+            for task in dataset:
+                task["label"] = label_to_index[task["label"]]
+
+        return unique_labels
+
+    def convert_example_to_template_fields(self, example: Dict):
+        label_text = self.labels[example["label"]]
+        return {"text": example["text"], "label_text": label_text}
+
+    def parse_probe_example(self, s: str):
+        return {"text": s, "label": 0}

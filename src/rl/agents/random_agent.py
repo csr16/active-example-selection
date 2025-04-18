@@ -126,5 +126,7 @@ class RandomAgent:
                 self.curr_step += 1
                 pbar.update(1)
 
-                if self.save_every > 0 and self.curr_step % self.save_every == 0:
-                    self.save_checkpoints()
+                # if self.save_every > 0 and self.curr_step % self.save_every == 0:
+                #     
+                
+        self.save_checkpoints()

@@ -5,6 +5,7 @@ from omegaconf import OmegaConf
 
 from prompting import MODELS, PROCESSORS, STRATEGIES, PromptTooLongError
 from prompting.misc_utils import seed_everything, setup_logging, setup_output_dir
+from prompting.data_utils import BB_Math_Processor
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,11 @@ def main():
     logger.info(f"Seed: {seed}")
     seed_everything(seed)
 
-    processor = PROCESSORS[conf.task](seed=seed, **conf.processor_kwargs)
+    # processor = PROCESSORS[conf.task](seed=seed, **conf.processor_kwargs)
+    if conf.task in ["agnews", "sst-2", "trec", "amazon"]:
+        processor = PROCESSORS[conf.task](seed=seed, **conf.processor_kwargs)
+    elif conf.task in ["winowhy", "epistemic_reasoning", "hyperbaton", "timedial", "aqua"]:
+        processor = BB_Math_Processor(dataset_name=conf.task, seed=seed, **conf.processor_kwargs)
     model_type = MODELS[conf.model]
     model = model_type(conf.model_name, **processor.model_kwargs, **conf.model_kwargs)
     strategy = STRATEGIES[conf.strategy](conf)

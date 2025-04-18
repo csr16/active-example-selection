@@ -370,14 +370,29 @@ class FewShotEnvironment(BaseEnvironment):
         if mode in ("train", "val"):
             train_split = mode
             split = "val" if mode == "train" else "train"
-            eval_prompts, eval_cali_prompts = self.proc.create_prompts(
-                train_indices, train_split=train_split, split=split
+            if split == 'val':
+                selected_indices = random.sample(
+                range(self.val_size),
+                k=5,
             )
-            outputs = self.model.complete_all_with_hidden_states(
-                eval_prompts, calibration_prompts=eval_cali_prompts
+                eval_subset = [self.proc.val_dataset[i] for i in selected_indices]
+                eval_prompts, eval_cali_prompts = self.proc.create_prompts(
+                train_indices, train_split=train_split, split='custom', custom_split=eval_subset
             )
-            eval_result = self.proc.extract_predictions(outputs, split=split)
-            self.previous_eval_result = eval_result
+                outputs = self.model.complete_all_with_hidden_states(
+                    eval_prompts, calibration_prompts=eval_cali_prompts
+                )
+                eval_result = self.proc.extract_predictions(outputs, split='custom', custom_split=eval_subset)
+                self.previous_eval_result = eval_result
+            else:
+                eval_prompts, eval_cali_prompts = self.proc.create_prompts(
+                    train_indices, train_split=train_split, split=split
+                )
+                outputs = self.model.complete_all_with_hidden_states(
+                    eval_prompts, calibration_prompts=eval_cali_prompts
+                )
+                eval_result = self.proc.extract_predictions(outputs, split=split)
+                self.previous_eval_result = eval_result
 
         elif mode == "test":
             # get val-dist

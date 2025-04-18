@@ -1,7 +1,7 @@
 import functools
 import logging
 from typing import Dict, List, Optional
-
+from tqdm import tqdm
 import openai
 import torch
 import torch.nn.functional as F
@@ -89,9 +89,12 @@ class DummyCache:
 class GPT2Wrapper:
     @classmethod
     @functools.cache
-    def initialize_model(cls, model_name):
+    def initialize_model(cls, model_name, multi_gpu_flag):
         # reuse models for multiple GPT2Wrapper instances
-        return AutoModelForCausalLM.from_pretrained(model_name)
+        if multi_gpu_flag:
+            return AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
+        else:
+            return AutoModelForCausalLM.from_pretrained(model_name)
 
     def __init__(
         self,
@@ -100,12 +103,14 @@ class GPT2Wrapper:
         labels: List[str] = None,
         batch_size: int = 8,
         calibrate: bool = False,
+        multi_gpu_flag=True
     ):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         if self.device != "cuda":
             logger.warning(f"Cannot find gpu, setting device to cpu.")
         self.batch_size = batch_size
         self.calibrate = calibrate
+        self.multi_gpu_flag = multi_gpu_flag
 
         if cache_module is None:
             self.cache_module = DummyCache()
@@ -116,15 +121,20 @@ class GPT2Wrapper:
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.tokenizer.padding_side = "left"
-        self.tokenizer.pad_token = self.tokenizer.eos_token
+        # self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+        #
+        self.tokenizer.truncation_side = "left"  # Set truncation to remove tokens from the beginning
 
         logger.info(f"Initializing {model_name}")
         self.model_name = model_name
-        self.model = self.initialize_model(model_name)
+        self.model = self.initialize_model(model_name, multi_gpu_flag)
         self.model.config.pad_token_id = self.model.config.eos_token_id
+
         for param in self.model.parameters():
             param.requires_grad = False
-        self.model.eval().to(self.device)
+        # self.model.eval().to(self.device)
+        self.model.eval()
 
         label_ids = []
         if labels is not None:
@@ -136,10 +146,14 @@ class GPT2Wrapper:
             ):
                 label_id = label_encoded[0]
                 label_str = self.tokenizer.convert_ids_to_tokens(label_id)
-                if len(label_encoded) > 1:
+                if 'llama' in self.model_name:
+                    # Llama models have a different tokenization scheme
+                    label_id = label_encoded[-1]
+                    logger.info(f"For llama family, using last token {self.tokenizer.convert_ids_to_tokens(label_id)} for {label}.")
+                else:
                     logger.warning(
-                        f"Cannot find matching id for {label}, using prefix {label_str}"
-                    )
+                    f"Cannot find matching id for {label}, using prefix {label_str}"
+                )
                 label_ids.append(label_id)
 
         self.labels = labels
@@ -155,7 +169,10 @@ class GPT2Wrapper:
     ) -> torch.Tensor:
         all_token_logits = self.model.lm_head(last_layer)
         all_token_nll = -F.log_softmax(all_token_logits, dim=1)[0:-1]
+        
+        device = all_token_nll.device
         actual_next_tokens = tokens[1:]
+        actual_next_tokens = actual_next_tokens.to(device)
         next_token_nll = all_token_nll.gather(
             dim=1, index=actual_next_tokens.unsqueeze(1)
         )
@@ -170,9 +187,14 @@ class GPT2Wrapper:
         return_hidden_states=False,
         **generation_kwargs: Dict,
     ) -> List[GenerationOutput]:
+        
+        # Truncate to max length
         batch = self.tokenizer.batch_encode_plus(
-            prompts, return_tensors="pt", padding=True
+            prompts, return_tensors="pt", padding=True, truncation=True, max_length=self.tokenizer.max_len_single_sentence
         )
+        # batch = self.tokenizer.batch_encode_plus(
+        #     prompts, return_tensors="pt", padding=True
+        # )
 
         if batch["input_ids"].shape[1] > self.tokenizer.max_len_single_sentence:
             prompt_length = batch["input_ids"].shape[1]
@@ -184,12 +206,16 @@ class GPT2Wrapper:
             )
 
         batch = to_device(batch, self.device)
+        batch = {key: val.to('cuda') for key, val in batch.items()}
+
         input_length = batch["input_ids"].shape[1]
         output = self.model.generate(
             **batch,
             max_length=input_length + 1,
+            pad_token_id=self.tokenizer.eos_token_id,
             output_hidden_states=True,
             **generation_kwargs,
+            max_new_tokens=None
         )
         encoded = output.sequences
         decoded = self.tokenizer.batch_decode(encoded[:, input_length:])
@@ -275,7 +301,7 @@ class GPT2Wrapper:
             else:
                 uncached.append((i, prompt))
 
-        for i in range(0, len(uncached), self.batch_size):
+        for i in tqdm(range(0, len(uncached), self.batch_size)):
             chunk = uncached[i : i + self.batch_size]
             chunk_prompts = [tup[1] for tup in chunk]
             outputs = self.complete(chunk_prompts, **generation_kwargs)
@@ -300,6 +326,7 @@ class GPT2Wrapper:
                 o.probs = probs
                 pred = probs.argmax(0)
                 o.completion = self.labels[pred]
+        
         return res
 
 
@@ -333,14 +360,19 @@ class GPT3Wrapper:
         if labels is not None:
             for label, label_encoded in zip(
                 labels,
-                self.tokenizer.batch_encode_plus([" " + l for l in labels])[
+                self.tokenizer.batch_encode_plus([" " + l for l in labels], return_tensors="pt")[
                     "input_ids"
                 ],
             ):
                 label_id = label_encoded[0]
                 label_str = self.tokenizer.convert_ids_to_tokens(label_id)
                 if len(label_encoded) > 1:
-                    logger.warning(
+                    if 'llama' in self.model_name:
+                        # Llama models have a different tokenization scheme
+                        label_id = label_encoded[-1]
+                        logger.info(f"For llama family, using last token {self.tokenizer.convert_ids_to_tokens(label_id)} for {label}.")
+                    else:
+                        logger.warning(
                         f"Cannot find matching id for {label}, using prefix {label_str}"
                     )
                 label_ids.append(label_id)
