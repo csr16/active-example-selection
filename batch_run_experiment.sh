@@ -1,12 +1,12 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=2,0,1
+export CUDA_VISIBLE_DEVICES=1,2
 
 datasets=(agnews sst-2 winowhy epistemic_reasoning)
 strategies=(random max-entropy best-of-k global-entropy-ordering)
 seeds=(0 1 2)  
 models=(
   # "meta-llama/Meta-Llama-3-8B"
-  "meta-llama/Llama-3.1-8B"
+  # "meta-llama/Llama-3.1-8B"
   "meta-llama/Llama-3.2-3B"
   "Qwen/Qwen2.5-7B"
 )

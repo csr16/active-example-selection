@@ -446,7 +446,9 @@ class BB_Math_Processor(BaseProcessor):
         self.eval_template = "Article: {text}\n" "Answer:"
         #
         self.representation_template = "Article: {text}\n"
-
+        self.set_label_mapping(data_set=dataset_name)
+        ###
+        self.prompt_start = f"Task Option Mapping: {str(self.label_mapping)}.\n\n"
         #
         self.generate_datasets(seed, mode)
         #
@@ -533,3 +535,13 @@ class BB_Math_Processor(BaseProcessor):
 
     def parse_probe_example(self, s: str):
         return {"text": s, "label": 0}
+
+    def set_label_mapping(self, data_set):
+        mapping_fict = {
+            "winowhy": {"correct": "Yes", "incorrect": "No"}, 
+            "epistemic_reasoning": {"entailment": "Yes", "non-entailment": "No"}, 
+            "timedial": {"(A)": "A", "(B)": "B", "(C)": "C"}, 
+            "hyperbaton": {"a": "A", "b": "B"}, 
+            "aqua": {"(A)": "A", "(B)": "B", "(C)": "C", "(D)": "D", "(E)": "E"}
+        }
+        self.label_mapping = mapping_fict[data_set]

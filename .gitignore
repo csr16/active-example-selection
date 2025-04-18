@@ -161,3 +161,4 @@ figures/
 rl_outputs/
 rl_configs/search/search-*/
 tmp*
+logs*

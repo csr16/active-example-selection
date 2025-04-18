@@ -1,0 +1,13 @@
+task: agnews
+processor_kwargs:
+  mode: labeled
+shots:
+- 4
+seed: 0
+strategy: random
+basedir: ./outputs
+model_kwargs:
+  calibrate: true
+model: gpt2
+model_name: meta-llama/Llama-3.2-3B
+output_dir: ./outputs/meta-llama_Llama-3_2-3B/random_agnews_0
