@@ -383,14 +383,14 @@ class TRECProcessor(BaseProcessor):
         self.generate_datasets(seed, mode)
 
     def get_label_idx(self, example: Dict):
-        return example["label-coarse"]
+        return example["coarse_label"]
 
     def convert_example_to_template_fields(self, example):
-        label_text = self.labels[example["label-coarse"]]
+        label_text = self.labels[example["coarse_label"]]
         return {"text": example["text"], "label_text": label_text}
 
     def parse_probe_example(self, s: str):
-        return {"text": s, "label-coarse": 0}
+        return {"text": s, "coarse_label": 0}
 
 
 class AmazonProcessor(BaseProcessor):
@@ -461,6 +461,11 @@ class BB_Math_Processor(BaseProcessor):
         self.model_kwargs = {"labels": self.labels}
 
     def update_label_orders_direct(self):
+        # Apply the reformatting to all tasks in all splits.
+        for dataset in [self.train_dataset, self.val_dataset, self.test_dataset]:
+            for task in dataset:
+                task["label"] = self.label_mapping[task["label"]]
+
         # Step 1: Combine all datasets to extract unique labels (preserving order)
         combined = self.train_dataset + self.val_dataset + self.test_dataset
         unique_labels = list(dict.fromkeys(item['label'] for item in combined))
@@ -506,7 +511,8 @@ class BB_Math_Processor(BaseProcessor):
         # Apply the reformatting to all tasks in all splits.
         for dataset in [self.train_dataset, self.val_dataset, self.test_dataset]:
             for task in dataset:
-                task["label"] = normalize_label(task["label"])
+                normalized_label = normalize_label(task["label"])
+                task["label"] = self.label_mapping[normalized_label]
 
         # Step 2: Gather a list of unique labels across all datasets (preserving first appearance order).
         unique_labels = []
@@ -535,7 +541,7 @@ class BB_Math_Processor(BaseProcessor):
 
     def parse_probe_example(self, s: str):
         return {"text": s, "label": 0}
-
+    
     def set_label_mapping(self, data_set):
         mapping_fict = {
             "winowhy": {"correct": "Yes", "incorrect": "No"}, 

@@ -32,6 +32,7 @@ def probe(model: GPT2Wrapper, prompt: str):
         no_repeat_ngram_size=3,
         temperature=2.0,
         stopping_criteria=[stop()],
+        max_new_tokens=None,
     )
     return model.tokenizer.decode(output[0, input_length:], skip_special_tokens=True)
 

@@ -1,14 +1,17 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=1,2
+export CUDA_VISIBLE_DEVICES=2,1
 
-datasets=(agnews sst-2 winowhy epistemic_reasoning)
+# datasets=(agnews sst-2 winowhy epistemic_reasoning)
+datasets=(trec amazon hyperbaton timedial aqua)
 strategies=(random max-entropy best-of-k global-entropy-ordering)
 seeds=(0 1 2)  
 models=(
   # "meta-llama/Meta-Llama-3-8B"
   # "meta-llama/Llama-3.1-8B"
-  "meta-llama/Llama-3.2-3B"
-  "Qwen/Qwen2.5-7B"
+  # "meta-llama/Llama-3.2-3B"
+  # "Qwen/Qwen2.5-7B"
+  "Qwen/Qwen2.5-3B"
+  # "meta-llama/Meta-Llama-3-8B"
 )
 mkdir -p logs
 #####################

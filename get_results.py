@@ -53,7 +53,7 @@ def summarize_acc(base_path, methods, datasets):
 
 if __name__ == '__main__':
     # === user parameters ===
-    base_path = './outputs/meta-llama_Llama-3_1-8B'
+    base_path = './outputs/Qwen_Qwen2_5-3B'
     methods   = ['random', 'max-entropy', 'best-of-k', 'global-entropy-ordering']  # <-- fill in your methods
     datasets  = ['agnews', 'sst-2', 'winowhy', 'epistemic_reasoning']  # <-- fill in your datasets
 
