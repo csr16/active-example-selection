@@ -146,14 +146,15 @@ class GPT2Wrapper:
             ):
                 label_id = label_encoded[0]
                 label_str = self.tokenizer.convert_ids_to_tokens(label_id)
-                if 'llama' in self.model_name:
-                    # Llama models have a different tokenization scheme
-                    label_id = label_encoded[-1]
-                    logger.info(f"For llama family, using last token {self.tokenizer.convert_ids_to_tokens(label_id)} for {label}.")
-                else:
-                    logger.warning(
-                    f"Cannot find matching id for {label}, using prefix {label_str}"
-                )
+                if len(label_encoded) > 1:
+                    if 'llama' in self.model_name:
+                        # Llama models have a different tokenization scheme
+                        label_id = label_encoded[-1]
+                        logger.info(f"For llama family, using last token {self.tokenizer.convert_ids_to_tokens(label_id)} for {label}.")
+                    else:
+                        logger.warning(
+                        f"Cannot find matching id for {label}, using prefix {label_str}"
+                    )
                 label_ids.append(label_id)
 
         self.labels = labels
