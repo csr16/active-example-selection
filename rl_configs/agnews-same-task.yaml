@@ -28,7 +28,7 @@ agent_kwargs:
   load_transitions: outputs/agnews-random/ckpts/transitions_2000.ckpt
 env: few-shot
 env_kwargs:
-  model: gpt2-medium
+  model: Qwen/Qwen2.5-3B
   model_kwargs:
     batch_size: 8
     calibrate: true
