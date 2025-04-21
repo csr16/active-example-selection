@@ -1,6 +1,6 @@
-seed: 42
+seed: 0
 basedir: ./rl_outputs/
-name: t=agnews_s=42
+name: t=agnews_s=0
 group: search-offline
 wandb_resume: true
 agent: random
@@ -35,4 +35,4 @@ env_kwargs:
   - perplexity
   task: agnews
   max_feasible_steps: 8
-output_dir: outputs/agnews-random
+output_dir: ./outputs/active/agnews_0

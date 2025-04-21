@@ -3,6 +3,6 @@ jsonlines==3.0.0
 omegaconf==2.1.1
 openai==0.18.1
 torch>=1.10.2
-tqdm==4.62.3
+tqdm
 transformers==4.51.3
 wandb==0.13.5

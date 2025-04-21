@@ -1,0 +1,13 @@
+task: trec
+processor_kwargs:
+  mode: labeled
+shots:
+- 4
+seed: 0
+strategy: random
+basedir: ./outputs
+model_kwargs:
+  calibrate: true
+model: gpt2
+model_name: Qwen/Qwen2.5-3B
+output_dir: ./outputs/Qwen_Qwen2_5-3B/random_trec_0
