@@ -6,3 +6,4 @@ torch>=1.10.2
 tqdm==4.62.3
 transformers==4.51.3
 wandb==0.13.5
+accelerate==0.16.0
