@@ -4,8 +4,8 @@ export CUDA_VISIBLE_DEVICES=1
 datasets=(agnews sst-2 winowhy epistemic_reasoning trec amazon hyperbaton timedial aqua)
 # datasets=(trec amazon hyperbaton timedial aqua)
 # strategies=(random max-entropy best-of-k global-entropy-ordering)
-strategies=(random)
-seeds=(5 7 9 89 234)  
+strategies=(random max-entropy)
+seeds=(1241 352 107694 215 745)  
 models=(
   # "meta-llama/Meta-Llama-3-8B"
   # "meta-llama/Llama-3.1-8B"

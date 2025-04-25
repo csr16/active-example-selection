@@ -51,9 +51,9 @@ def summarize_acc(base_path, methods, datasets):
     )
     return stats
 
-def lowest_random_means(base_path, datasets, k=3):
+def lowest_random_means(base_path, datasets, target_method, k=3):
     """
-    For method == 'random', and for each dataset in `datasets`, 
+    For a given method, and for each dataset in `datasets`, 
     pick all combinations of k distinct seeds and return the
     combination whose mean acc is minimal.
     """
@@ -65,7 +65,7 @@ def lowest_random_means(base_path, datasets, k=3):
         if not subdir.is_dir(): continue
         parts = subdir.name.split('_')
         method, dataset, seed = parts[0], '_'.join(parts[1:-1]), parts[-1]
-        if method != 'random' or dataset not in datasets:
+        if method != target_method or dataset not in datasets:
             continue
         eval_file = subdir / 'eval.jsonl'
         if not eval_file.exists(): continue
@@ -108,10 +108,10 @@ def lowest_random_means(base_path, datasets, k=3):
 if __name__ == '__main__':
     # === user parameters ===
     base_path = './outputs/Qwen_Qwen2_5-3B'
-    methods   = ['random', 'max-entropy', 'best-of-k', 'global-entropy-ordering']  # <-- fill in your methods
+    methods   = ['random', 'max-entropy', 'best-of-k', 'global-entropy-ordering', 'oracle']  # <-- fill in your methods
     datasets  = ['agnews', 'sst-2', 'trec', 'amazon', 'winowhy', 'epistemic_reasoning', 'hyperbaton', 'timedial', 'aqua']  # <-- fill in your datasets
 
     # run
     summary_df = summarize_acc(base_path, methods, datasets)
     print(summary_df.to_string(index=False))
-    print(lowest_random_means(base_path, datasets).to_string(index=False))
+    print(lowest_random_means(base_path, datasets, 'random').to_string(index=False))
