@@ -21,7 +21,7 @@ class RandomAgent:
         env: FewShotEnvironment,
         output_dir: Optional[str] = None,
         train_steps: int = 1000,
-        save_every: int = 200,
+        save_every: int = 1,
     ):
         self.env = env
         self.train_steps = train_steps
@@ -76,7 +76,6 @@ class RandomAgent:
         past_states = [state]
         action_indices = []
         action_spaces = []
-
         while not terminal:
             states = past_states
             action_space = env.action_space()
@@ -88,7 +87,6 @@ class RandomAgent:
                 past_states.append(next_state)
             action_indices.append(action_idx)
             action_spaces.append(action_space)
-
         for i in range(len(rewards) - 1):
             states = past_states[: i + 1]
             action_idx = action_indices[i]
@@ -106,7 +104,6 @@ class RandomAgent:
                 reward,
             )
             self.transitions.append(t)
-
         # push terminal transition
         states = past_states
         action_idx = action_indices[-1]
@@ -126,7 +123,8 @@ class RandomAgent:
                 self.curr_step += 1
                 pbar.update(1)
 
-                # if self.save_every > 0 and self.curr_step % self.save_every == 0:
-                #     
+                if self.save_every > 0 and self.curr_step % self.save_every == 0:
+                    print('Saving checkpoints')
+                    self.save_checkpoints()
                 
         self.save_checkpoints()

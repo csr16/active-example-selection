@@ -210,7 +210,7 @@ class DQNAgent:
             # epsilon-greedy exploration with exp. decay
             eps = self.eps_start * self.eps_decay**self.curr_step
             eps = max(eps, self.eps_end)
-            wandb.log(data={"epsilon": eps}, step=self.curr_step)
+            # wandb.log(data={"epsilon": eps}, step=self.curr_step)
             rand_val = random.random()
             if rand_val < eps:
                 # explore
@@ -219,14 +219,14 @@ class DQNAgent:
 
         # pick best action (argmax of Q values)
         Q_values = self.policy_net(states, action_space)
-        wandb.log(
-            data={
-                "Q-mean": Q_values.mean().item(),
-                "Q-std": Q_values.std().item(),
-                "Q-max": Q_values.max().item(),
-            },
-            step=self.curr_step,
-        )
+        # wandb.log(
+        #     data={
+        #         "Q-mean": Q_values.mean().item(),
+        #         "Q-std": Q_values.std().item(),
+        #         "Q-max": Q_values.max().item(),
+        #     },
+        #     step=self.curr_step,
+        # )
 
         action_idx = Q_values.argmax().item()
         return action_idx
@@ -421,10 +421,10 @@ class DQNAgent:
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), self.max_grad_norm)
         self.optimizer.step()
-        wandb.log(
-            data={"lr": self.scheduler.get_last_lr()[0], "loss": loss.item()},
-            step=self.curr_step,
-        )
+        # wandb.log(
+        #     data={"lr": self.scheduler.get_last_lr()[0], "loss": loss.item()},
+        #     step=self.curr_step,
+        # )
         self.scheduler.step()
 
     def train(self):
@@ -448,7 +448,7 @@ class DQNAgent:
                         reward_hist
                     )
                     logger.debug(f"step {self.curr_step}, {summary}")
-                    wandb.log(data=summary, step=self.curr_step)
+                    # wandb.log(data=summary, step=self.curr_step)
 
                 # optimize
                 for _ in range(self.optimization_steps_per_train_step):
@@ -513,10 +513,10 @@ class DQNAgent:
 
             self.write_eval_results(eval_prefix, summary)
             logger.info(f"step {self.curr_step}, {summary}")
-            if eval_mode == "val":
-                wandb.log(data=summary, step=self.curr_step)
-            else:
-                wandb.log(data={f"{eval_prefix}-{k}": v for k, v in summary.items()})
+            # if eval_mode == "val":
+            #     wandb.log(data=summary, step=self.curr_step)
+            # else:
+            #     wandb.log(data={f"{eval_prefix}-{k}": v for k, v in summary.items()})
 
         self.mode = "train"
         self.env.set_mode("train")
@@ -555,5 +555,5 @@ class DQNAgent:
             return
 
         logger.info(f"loading best checkpoint from step {best_step} for testing")
-        wandb.log(data={"best-val-final-acc": best_perf}, step=self.curr_step)
+        # wandb.log(data={"best-val-final-acc": best_perf}, step=self.curr_step)
         self.load_model_at_step(best_step)

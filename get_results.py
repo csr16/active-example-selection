@@ -114,4 +114,4 @@ if __name__ == '__main__':
     # run
     summary_df = summarize_acc(base_path, methods, datasets)
     print(summary_df.to_string(index=False))
-    print(lowest_random_means(base_path, datasets, 'random').to_string(index=False))
+    print(lowest_random_means(base_path, datasets, 'global-entropy-ordering').to_string(index=False))

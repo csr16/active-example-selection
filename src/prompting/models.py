@@ -302,7 +302,7 @@ class GPT2Wrapper:
             else:
                 uncached.append((i, prompt))
 
-        for i in tqdm(range(0, len(uncached), self.batch_size)):
+        for i in range(0, len(uncached), self.batch_size):
             chunk = uncached[i : i + self.batch_size]
             chunk_prompts = [tup[1] for tup in chunk]
             outputs = self.complete(chunk_prompts, **generation_kwargs)

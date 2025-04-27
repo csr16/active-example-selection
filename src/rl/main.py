@@ -4,7 +4,7 @@ from os.path import join
 import time
 from omegaconf import OmegaConf
 
-import wandb
+# import wandb
 from prompting.misc_utils import seed_everything, setup_logging
 from rl import AGENTS, ENVIRONMENTS
 from rl.misc_utils import setup_rl_output_dir
@@ -27,19 +27,19 @@ def main():
         with open(join(conf.output_dir, "config.yaml"), "w") as f:
             OmegaConf.save(config=conf, f=f)
 
-    if conf.get("wandb_resume") and conf.get("group") and conf.get("name"):
-        wandb_id = f"{conf['group']}.{conf['name']}"
-    else:
-        wandb_id = wandb.util.generate_id()
+    # if conf.get("wandb_resume") and conf.get("group") and conf.get("name"):
+    #     wandb_id = f"{conf['group']}.{conf['name']}"
+    # else:
+    #     wandb_id = wandb.util.generate_id()
 
-    wandb.init(
-        config=conf,
-        project="active-example-selection",
-        name=conf.get("name"),
-        resume="allow",
-        group=conf.get("group"),
-        id=wandb_id,
-    )
+    # wandb.init(
+    #     config=conf,
+    #     project="active-example-selection",
+    #     name=conf.get("name"),
+    #     resume="allow",
+    #     group=conf.get("group"),
+    #     id=wandb_id,
+    # )
 
     logger.info(str(conf))
     seed = conf.get("seed", 42)

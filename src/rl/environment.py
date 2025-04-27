@@ -336,7 +336,6 @@ class FewShotEnvironment(BaseEnvironment):
         else:
             _ = self.zero_shot_acc_train
             self.previous_eval_result = self.zero_shot_train_eval_result
-
         self.set_max_steps_episode()
         self.train_indices = []
         self.acc_history = []
