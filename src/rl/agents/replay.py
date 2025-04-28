@@ -61,7 +61,7 @@ class ReplayMemory(object):
 
         assert isinstance(env, FewShotEnvironment)
         logger.info(f"loading transitions from path {path} with env {env}")
-        transitions = torch.load(path)
+        transitions = torch.load(path, weights_only=False)
         state_repr = env.state_repr
         action_repr = env.action_repr
         embedding_dim = env.model.embedding_dim

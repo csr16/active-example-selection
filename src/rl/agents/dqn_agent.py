@@ -177,7 +177,7 @@ class DQNAgent:
         logger.info(
             "loading replay memory, policy network and optimizer " f"from step={step}"
         )
-        self.replay_memory = torch.load(replay_ckpts[step])
+        self.replay_memory = torch.load(replay_ckpts[step], weights_only=False)
         self.policy_net.load_state_dict(torch.load(model_ckpts[step]))
         self.target_update()
         self.optimizer.load_state_dict(torch.load(optim_ckpts[step]))

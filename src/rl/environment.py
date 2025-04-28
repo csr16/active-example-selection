@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from omegaconf import DictConfig, OmegaConf
 
 from prompting import PROCESSORS, GPT2Wrapper, PromptTooLongError
+from prompting.data_utils import BB_Math_Processor
 from prompting.models import GPT3Wrapper
 from rl.misc_utils import normalized_entropy, tensor_stats
 
@@ -97,7 +98,11 @@ class FewShotEnvironment(BaseEnvironment):
 
         self.task = task
         self.task_id = task_id
-        processor = PROCESSORS[task](seed, dataset_mode)
+        # processor = PROCESSORS[task](seed, dataset_mode)
+        if task in ["agnews", "sst-2", "trec", "amazon"]:
+            processor = PROCESSORS[task](seed, dataset_mode)
+        elif task in ["winowhy", "epistemic_reasoning", "hyperbaton", "timedial", "aqua"]:
+            processor = BB_Math_Processor(task, seed, dataset_mode)
         model = GPT2Wrapper(
             model, cache_module, **processor.model_kwargs, **model_kwargs
         )

@@ -1,10 +1,10 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=6
+export CUDA_VISIBLE_DEVICES=0
 export WANDB_MODE=disabled
 
 #####################
 
-# datasets=(hyperbaton)
+# datasets=(timedial)
 # seeds=(1 2)  
 
 # for dataset in "${datasets[@]}"; do
@@ -28,10 +28,8 @@ export WANDB_MODE=disabled
 #   done
 # done
 
-# datasets=(agnews sst-2 trec amazon winowhy epistemic_reasoning hyperbaton timedial aqua)
-
-datasets=(agnews sst-2 trec)
-seeds=(0 1 2)
+datasets=(hyperbaton aqua) # sst-2 trec amazon winowhy epistemic_reasoning hyperbaton timedial aqua
+seeds=(0 1 2) 
 for dataset in "${datasets[@]}"; do
   for seed in "${seeds[@]}"; do
     temp_yaml="rl_configs/temp_agnews_same_${dataset}_${seed}.yaml"
